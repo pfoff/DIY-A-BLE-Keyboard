@@ -2,8 +2,13 @@
 
 ##Introduction
 This is a simple open source BLE keyboard firmware for the nRF51 bluetooth chip.
+With some additions to support an Apple IIc keyboard as bluetooth keyboard
+It's not yet usable, modifiers are not integrated in the matrix and therefore don't work.
 
 ##How to use
+* I will provide wiring information in the future on request. 
+* No idea how to implement the modifiers. They are switched to ground.
+* Infos on the Apple IIc keyboard from option8: https://github.com/option8/RetroConnector/tree/master/IIc-USB
 * Follow the [tutorials](https://devzone.nordicsemi.com/tutorials/) to set up development environment
 and test the chip.
 * Download the [nRF51 SDK](https://developer.nordicsemi.com/) and 
