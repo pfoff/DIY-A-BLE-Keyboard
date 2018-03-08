@@ -41,19 +41,23 @@ static void remap_fn_keys(uint8_t *keys, uint8_t number_of_keys);
 
 void sleep_mode_prepare(void)
 {
-		for (uint_fast8_t i = KEYBOARD_NUM_OF_COLUMNS; i--;){
-			nrf_gpio_pin_clear((uint32_t)column_pin_array[i]);
-		}
-		nrf_gpio_pin_set((uint32_t)column_pin_array[wakeup_button_column_index]);
-		nrf_gpio_cfg_sense_input(row_pin_array[wakeup_button_row_index], NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+	for (uint_fast8_t i = KEYBOARD_NUM_OF_COLUMNS; i--;){
+		nrf_gpio_pin_clear((uint32_t)column_pin_array[i]);
+	}
+	// also clear modifier pins
+	for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
+		nrf_gpio_pin_clear((uint32_t)mods_pin_array[i]);
+	}
+	nrf_gpio_pin_set((uint32_t)column_pin_array[wakeup_button_column_index]);
+	nrf_gpio_cfg_sense_input(row_pin_array[wakeup_button_row_index], NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
 }
 
 bool keyboard_init(void)
 {
-		input_scan_vector = 0;
+	input_scan_vector = 0;
     if (row_pin_array == 0 || column_pin_array == 0){
 		return false;	//return if pins have not been define
-    }else{
+    } else {
 		for (uint_fast8_t i = KEYBOARD_NUM_OF_COLUMNS; i--;){
 			nrf_gpio_cfg_output((uint32_t)column_pin_array[i]);
 			NRF_GPIO->PIN_CNF[(uint32_t)column_pin_array[i]] |= 0x400;	//Set pin to be "Disconnected 0 and standard 1"
@@ -63,7 +67,17 @@ bool keyboard_init(void)
 			nrf_gpio_cfg_input((uint32_t)row_pin_array[i],NRF_GPIO_PIN_PULLDOWN);
 			input_scan_vector |= (1U << row_pin_array[i]);	//Prepare the magic number
 		}
+		// setup modifiers
+		for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
+			nrf_gpio_cfg_output((uint32_t)mods_pin_array[i]);
+			NRF_GPIO->PIN_CNF[(uint32_t)mods_pin_array[i]] |= 0x400;	//Set pin to be "Disconnected 0 and standard 1"
+			nrf_gpio_pin_clear((uint32_t)mods_pin_array[i]);	//Set pin to low
+			// now read value from modifier ground
+			nrf_gpio_cfg_input((uint32_t)mod_base_pin,NRF_GPIO_PIN_PULLDOWN);
+			input_scan_vector |= (1U << mod_base_pin);	//Read from mod_base_pin
+		}
         if (((NRF_GPIO->IN)&input_scan_vector) != 0){	//Detect if any input pin is high
+			// some kind of debugging output or user interacion, here?
             return false;	//If inputs are not all low while output are, there must be something wrong
         }else{
 			transmitted_keys_num = 0;	//Clear the arrays
@@ -220,3 +234,4 @@ static void remap_fn_keys(uint8_t *keys, uint8_t number_of_keys){
         }
     }
 }
+/* vim: set ts=2 sw=8 tw=0 noet :*/

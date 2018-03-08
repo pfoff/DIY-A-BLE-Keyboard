@@ -4,9 +4,13 @@
 // This part was adpated to Apple //c Keyboard, which has a 14x5 matrix
 #define KEYBOARD_NUM_OF_COLUMNS 10 // !< Number of columns in the keyboard matrix
 #define KEYBOARD_NUM_OF_ROWS    8  // !< Number of rows in the keyboard matrix
+#define KEYBOARD_NUM_OF_MODS    2  // !< Number of modifiers beside the keyboard matrix
+// I try to get shift and Ctrl working for now
 
-static const uint8_t row_pin_array[KEYBOARD_NUM_OF_ROWS] = {10,11,12,13,14,15,16,17};
-static const uint8_t column_pin_array[KEYBOARD_NUM_OF_COLUMNS] = {0,1,2,3,4,5,6,7,8,9};
+static const uint8_t row_pin_array[KEYBOARD_NUM_OF_ROWS] 	= { 10, 11, 12, 13, 14, 15, 16, 17 };
+static const uint8_t column_pin_array[KEYBOARD_NUM_OF_COLUMNS] 	= { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+static const uint8_t mods_pin_array[KEYBOARD_NUM_OF_MODS] 	= { 21, 22 };
+static const uint8_t mod_base_pin				= 18;
 
 static const uint8_t wakeup_button_row_index = 2;			//select row_pin_array[2] = 21
 static const uint8_t wakeup_button_column_index = 1;	//select column_pin_array[1] = 2 
@@ -26,23 +30,12 @@ static const uint8_t default_matrix_lookup[KEYBOARD_NUM_OF_COLUMNS * KEYBOARD_NU
 /*7*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_BSPACE,	KC_DOWN,	KC_LEFT,	KC_RIGHT
 };
 
-// error for now:
-// f pressed => b
-// h => j
-// q => 9
-// ] => '
-// 0 => SPC
-// e => g
-// r => v
-/* Old example matrix:
- *	0x3E, 0x35, 0x3B, 0x22, 0xFF, 0x23, 0x00, 0x00,0x00, 
-	0x41, 0x39, 0x3A, 0x05, 0x00, 0x11, 0x00, 0x00,0x00, 
-	0x40, 0x29, 0x3D, 0x0A, 0x00, 0x0B, 0x00, 0xE3,0x49, 
-	0x1A, 0x14, 0x08, 0x15, 0x00, 0x18, 0x0C, 0x00,0x00, 
-	0x1F, 0x1E, 0x20, 0x21, 0x00, 0x24, 0x25, 0x00,0x00, 
-	0x16, 0x04, 0x07, 0x09, 0x00, 0x0D, 0x0E, 0x00,0x00, 
-*/
-
+/** Table containing the mapping between the modifiers and their HID codes */
+static const uint8_t default_modifier_lookup[KEYBOARD_NUM_OF_COLUMNS * KEYBOARD_NUM_OF_ROWS] =
+{
+/*	X0	X1	*/
+/*0*/		KC_LSFT,	KC_LCTRL
+};
 
 /* Apple //c keyboard matrix  */
 /*	X0	1	2	3	4	5	6	7	8	9
@@ -62,4 +55,5 @@ Y0	ESC	1	2	3	4	6	5	7	8	9
 
 7	NO	NO	NO	NO	NO	NO	DEL	DN	LT	RT
 */
+
 /* vim: set ts=8 sw=8 tw=0 noet :*/
