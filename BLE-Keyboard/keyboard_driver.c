@@ -44,10 +44,13 @@ void sleep_mode_prepare(void)
 	for (uint_fast8_t i = KEYBOARD_NUM_OF_COLUMNS; i--;){
 		nrf_gpio_pin_clear((uint32_t)column_pin_array[i]);
 	}
+#ifdef IIC_MODIFIERS
 	// also clear modifier pins
 	for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
 		nrf_gpio_pin_clear((uint32_t)mods_pin_array[i]);
 	}
+	nrf_gpio_pin_clear((uint32_t)mod_base_pin);
+#endif
 	nrf_gpio_pin_set((uint32_t)column_pin_array[wakeup_button_column_index]);
 	nrf_gpio_cfg_sense_input(row_pin_array[wakeup_button_row_index], NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
 }
@@ -58,6 +61,24 @@ bool keyboard_init(void)
     if (row_pin_array == 0 || column_pin_array == 0){
 		return false;	//return if pins have not been define
     } else {
+		// setup modifiers
+#ifdef IIC_MODIFIERS
+		nrf_gpio_cfg_input((uint32_t)mod_base_pin,NRF_GPIO_PIN_PULLDOWN);
+		for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
+#if 0
+			// now activate input on the modpins
+			nrf_gpio_cfg_input((uint32_t)mods_pin_array[i],NRF_GPIO_PIN_PULLDOWN);
+			// input_scan_vector |= (1U << mods_pin_array[i]);	//mod_base_pin
+			//nrf_gpio_pin_clear((uint32_t)mod_base_pin);	//Set pin to low
+#else
+			nrf_gpio_cfg_output((uint32_t)mods_pin_array[i]);
+			NRF_GPIO->PIN_CNF[(uint32_t)mods_pin_array[i]] |= 0x400;	//Set pin to be "Disconnected 0 and standard 1"
+			nrf_gpio_pin_clear((uint32_t)mods_pin_array[i]);	//Set pin to low
+#endif
+
+		}
+#endif
+
 		for (uint_fast8_t i = KEYBOARD_NUM_OF_COLUMNS; i--;){
 			nrf_gpio_cfg_output((uint32_t)column_pin_array[i]);
 			NRF_GPIO->PIN_CNF[(uint32_t)column_pin_array[i]] |= 0x400;	//Set pin to be "Disconnected 0 and standard 1"
@@ -67,27 +88,18 @@ bool keyboard_init(void)
 			nrf_gpio_cfg_input((uint32_t)row_pin_array[i],NRF_GPIO_PIN_PULLDOWN);
 			input_scan_vector |= (1U << row_pin_array[i]);	//Prepare the magic number
 		}
-		// setup modifiers
-		for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
-			nrf_gpio_cfg_output((uint32_t)mods_pin_array[i]);
-			NRF_GPIO->PIN_CNF[(uint32_t)mods_pin_array[i]] |= 0x400;	//Set pin to be "Disconnected 0 and standard 1"
-			nrf_gpio_pin_clear((uint32_t)mods_pin_array[i]);	//Set pin to low
-			// now read value from modifier ground
-			nrf_gpio_cfg_input((uint32_t)mod_base_pin,NRF_GPIO_PIN_PULLDOWN);
-			input_scan_vector |= (1U << mod_base_pin);	//Read from mod_base_pin
-		}
-        if (((NRF_GPIO->IN)&input_scan_vector) != 0){	//Detect if any input pin is high
+		if (((NRF_GPIO->IN)&input_scan_vector) != 0){	//Detect if any input pin is high
 			// some kind of debugging output or user interacion, here?
             return false;	//If inputs are not all low while output are, there must be something wrong
-        }else{
+    }else{
 			transmitted_keys_num = 0;	//Clear the arrays
 			currently_pressed_keys_num = 0;
             for (uint_fast8_t i = MAX_NUM_OF_PRESSED_KEYS; i--;){
 				transmitted_keys[i] = 0;
                 currently_pressed_keys[i] = 0;
             }
-        }
-        matrix_lookup = default_matrix_lookup;
+			}
+			matrix_lookup = default_matrix_lookup;
     }
     return true;
 }
@@ -123,7 +135,29 @@ static bool keymatrix_read(uint8_t *pressed_keys, uint8_t *number_of_pressed_key
     uint_fast8_t row_state[KEYBOARD_NUM_OF_COLUMNS];
     uint_fast8_t blocking_mask = 0;
     *number_of_pressed_keys = 0;
+	// check modifiers first
+#ifdef IIC_MODIFIERS
+	for (uint_fast8_t mod = KEYBOARD_NUM_OF_MODS; mod--; )	{
+		//nrf_gpio_pin_set((uint32_t) mod_base_pin);
+		nrf_gpio_pin_set((uint32_t) mods_pin_array[mod]);
+//needed?        if (((NRF_GPIO->IN)&input_scan_vector) != 0){					//If any input is high
+		  uint_fast8_t pin_state;
+		  //pin_state = nrf_gpio_pin_read((uint32_t) mods_pin_array[mod]);
+		  pin_state = nrf_gpio_pin_read((uint32_t) mod_base_pin);
+		  if (pin_state){											//If pin is high
+			  if (*number_of_pressed_keys < MAX_NUM_OF_PRESSED_KEYS){
+				  *pressed_keys = default_modifier_lookup[mod];
+				  if(*pressed_keys != 0){							//Record the pressed key if it's not 0
+					  pressed_keys++;
+					  (*number_of_pressed_keys)++;
+				  }
+			  }
+		  }
 
+//needed?		}  
+		nrf_gpio_pin_clear((uint32_t) mods_pin_array[mod]);
+	}
+#endif
     for (uint_fast8_t column =  KEYBOARD_NUM_OF_COLUMNS; column--;){	//Loop through each column
 		nrf_gpio_pin_set((uint32_t) column_pin_array[column]);
         if (((NRF_GPIO->IN)&input_scan_vector) != 0){					//If any input is high
@@ -234,4 +268,4 @@ static void remap_fn_keys(uint8_t *keys, uint8_t number_of_keys){
         }
     }
 }
-/* vim: set ts=2 sw=8 tw=0 noet :*/
+/* vim: set ts=4 sw=2 tw=0 noet :*/

@@ -49,8 +49,8 @@
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT  1                                              /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
-#define DEVICE_NAME                      "Nordic_Keyboard"                              /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME                "NordicSemiconductor"                          /**< Manufacturer. Will be passed to Device Information Service. */
+#define DEVICE_NAME                      "FoFBLE2c"                              /**< Name of device. Will be included in the advertising data. */
+#define MANUFACTURER_NAME                "5VGeekdgets"                          /**< Manufacturer. Will be passed to Device Information Service. */
 
 #define APP_TIMER_PRESCALER              0                                              /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_MAX_TIMERS             (4+BSP_APP_TIMERS_NUMBER)                      /**< Maximum number of simultaneously created timers. */
@@ -111,6 +111,10 @@
 #define SHIFT_KEY_CODE                   0x02                                           /**< Key code indicating the press of the Shift Key. */
 
 #define MAX_KEYS_IN_ONE_REPORT           (INPUT_REPORT_KEYS_MAX_LEN - SCAN_CODE_POS)    /**< Maximum number of key presses that can be sent in one Input Report. */
+
+
+#define CAPS_LED_PLUS	19
+#define CAPS_LED_MINUS 	20
 
 /**Buffer queue access macros
  *
@@ -548,14 +552,14 @@ static void on_hid_rep_char_write(ble_hids_evt_t *p_evt)
                 // Caps Lock is turned On.
                 APP_ERROR_CHECK(err_code);
                 m_caps_on = true;
-								nrf_gpio_pin_set(16);
+								nrf_gpio_pin_set(CAPS_LED_PLUS);
             }
             else if (m_caps_on && ((report_val & OUTPUT_REPORT_BIT_MASK_CAPS_LOCK) == 0))
             {
                 // Caps Lock is turned Off .
                 APP_ERROR_CHECK(err_code);
                 m_caps_on = false;
-								nrf_gpio_pin_clear(16);
+								nrf_gpio_pin_clear(CAPS_LED_PLUS);
             }
             else
             {
@@ -995,10 +999,10 @@ static void device_manager_init(bool erase_bonds)
  */
 static void keyboard_LED_init(void)
 {
-		nrf_gpio_cfg_output(16);	//Capslock_LED+
-		nrf_gpio_cfg_output(17);	//Capslock_LED-
-		nrf_gpio_pin_clear(16);
-		nrf_gpio_pin_clear(17);
+		nrf_gpio_cfg_output(CAPS_LED_PLUS);	//Capslock_LED+
+		nrf_gpio_cfg_output(CAPS_LED_MINUS);	//Capslock_LED-
+		nrf_gpio_pin_clear(CAPS_LED_PLUS);
+		nrf_gpio_pin_clear(CAPS_LED_MINUS);
 }
 
 /**@brief Function for the Power manager.

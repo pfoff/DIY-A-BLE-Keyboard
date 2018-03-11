@@ -41,5 +41,7 @@ keys are holded, know more about the HID keyboard packet format in
  the battery service has been removed and the whole frame work has been simplified.
  
 ##Future work
- * Add support to the sleep mode
- * Add support to touchpad
+ * Fix modifiers
+ * Port code to newer sdk
+ * Add support for sleep mode
+ * Add support for trackpoint

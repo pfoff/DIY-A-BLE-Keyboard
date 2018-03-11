@@ -1,7 +1,11 @@
 #include <stdint.h>
 #include "keycode.h"
 
-// This part was adpated to Apple //c Keyboard, which has a 14x5 matrix
+
+// define to use Apple //c keyboards modifiers
+#define IIC_MODIFIERS
+
+// This part was adpated to Apple //c Keyboard, which has a 10x8 matrix
 #define KEYBOARD_NUM_OF_COLUMNS 10 // !< Number of columns in the keyboard matrix
 #define KEYBOARD_NUM_OF_ROWS    8  // !< Number of rows in the keyboard matrix
 #define KEYBOARD_NUM_OF_MODS    2  // !< Number of modifiers beside the keyboard matrix
@@ -12,9 +16,9 @@ static const uint8_t column_pin_array[KEYBOARD_NUM_OF_COLUMNS] 	= { 0, 1, 2, 3, 
 static const uint8_t mods_pin_array[KEYBOARD_NUM_OF_MODS] 	= { 21, 22 };
 static const uint8_t mod_base_pin				= 18;
 
-static const uint8_t wakeup_button_row_index = 2;			//select row_pin_array[2] = 21
-static const uint8_t wakeup_button_column_index = 1;	//select column_pin_array[1] = 2 
-//wakeup button is default_matrix_lookup[2][1] = 0x29 and it's ESC key
+static const uint8_t wakeup_button_row_index = 0;			//select row_pin_array[2] = 21
+static const uint8_t wakeup_button_column_index = 0;	//select column_pin_array[1] = 2 
+//wakeup button is default_matrix_lookup[0][0] = 0x29 and it's ESC key
 
 /** Table containing the mapping between the key matrix and the HID Usage codes for each key. */
 static const uint8_t default_matrix_lookup[KEYBOARD_NUM_OF_COLUMNS * KEYBOARD_NUM_OF_ROWS] =
@@ -26,7 +30,7 @@ static const uint8_t default_matrix_lookup[KEYBOARD_NUM_OF_COLUMNS * KEYBOARD_NU
 /*3*/		KC_Z,		KC_X,		KC_C,		KC_V,		KC_B,		KC_N,		KC_M,		KC_COMMA,	KC_DOT,		KC_SLASH,
 /*4*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_BSLASH,	KC_EQUAL,	KC_0,		KC_MINUS,
 /*5*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_GRAVE,	KC_P,		KC_LBRACKET,	KC_RBRACKET,
-/*6*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_RETURN,	KC_UP,		KC_SPACE,	KC_QUOT,
+/*6*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_ENTER,	KC_UP,		KC_SPACE,	KC_QUOT,
 /*7*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_BSPACE,	KC_DOWN,	KC_LEFT,	KC_RIGHT
 };
 
