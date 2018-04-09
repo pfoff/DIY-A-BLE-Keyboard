@@ -1,4 +1,8 @@
-/* Copyright (c) 2009 Nordic Semiconductor. All Rights Reserved.
+/*Based on an example of Nordic Semiconductor,
+ * Copyright license of the example:
+ * Everything else GPL v2, no warranties, like here:
+ *
+ * Copyright (c) 2009 Nordic Semiconductor. All Rights Reserved.
  *
  * The information contained herein is property of Nordic Semiconductor ASA.
  * Terms and conditions of usage are described in detail in NORDIC
@@ -15,7 +19,7 @@
 
 #include "nrf.h"
 #include "nrf_gpio.h"
-#include "keyboard_map.h"
+#include "keymap_IIc.h"
 #include "keyboard_driver.h"
 
 #define MODIFIER_HID_START 0xE0
@@ -45,10 +49,10 @@ void sleep_mode_prepare(void)
 		nrf_gpio_pin_clear((uint32_t)column_pin_array[i]);
 	}
 #ifdef IIC_MODIFIERS
-	// also clear modifier pins
-	for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
-		nrf_gpio_pin_clear((uint32_t)mods_pin_array[i]);
-	}
+	// also clear modifier pins, for sensing pins not needed??
+//	for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
+//		nrf_gpio_pin_clear((uint32_t)mods_pin_array[i]);
+//	}
 	nrf_gpio_pin_clear((uint32_t)mod_base_pin);
 #endif
 	nrf_gpio_pin_set((uint32_t)column_pin_array[wakeup_button_column_index]);
@@ -63,19 +67,18 @@ bool keyboard_init(void)
     } else {
 		// setup modifiers
 #ifdef IIC_MODIFIERS
-		nrf_gpio_cfg_input((uint32_t)mod_base_pin,NRF_GPIO_PIN_PULLDOWN);
-		for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
-#if 0
-			// now activate input on the modpins
-			nrf_gpio_cfg_input((uint32_t)mods_pin_array[i],NRF_GPIO_PIN_PULLDOWN);
-			// input_scan_vector |= (1U << mods_pin_array[i]);	//mod_base_pin
-			//nrf_gpio_pin_clear((uint32_t)mod_base_pin);	//Set pin to low
-#else
-			nrf_gpio_cfg_output((uint32_t)mods_pin_array[i]);
-			NRF_GPIO->PIN_CNF[(uint32_t)mods_pin_array[i]] |= 0x400;	//Set pin to be "Disconnected 0 and standard 1"
-			nrf_gpio_pin_clear((uint32_t)mods_pin_array[i]);	//Set pin to low
-#endif
+	  // set mod_base_pin to low, modifier pins to senselow, pullup NRF_GPIO_PIN_SENSE_HIGH
+		nrf_gpio_cfg_output((uint32_t)mod_base_pin);
+		nrf_gpio_pin_clear((uint32_t)mod_base_pin);	//Set pin to low
 
+		for (uint_fast8_t i = KEYBOARD_NUM_OF_MODS; i--;){
+			if( i <= mod_to_vcc )	{
+				// config for senselow, pullup
+				nrf_gpio_cfg_sense_input(mods_pin_array[i], NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+			} else {
+				// config for senselow, pullup
+				nrf_gpio_cfg_sense_input(mods_pin_array[i], NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+			}
 		}
 #endif
 
@@ -89,7 +92,7 @@ bool keyboard_init(void)
 			input_scan_vector |= (1U << row_pin_array[i]);	//Prepare the magic number
 		}
 		if (((NRF_GPIO->IN)&input_scan_vector) != 0){	//Detect if any input pin is high
-			// some kind of debugging output or user interacion, here?
+			// some kind of debugging output or user interacion, possible?
             return false;	//If inputs are not all low while output are, there must be something wrong
     }else{
 			transmitted_keys_num = 0;	//Clear the arrays
@@ -109,20 +112,20 @@ bool keyboard_new_packet(const uint8_t **p_key_packet, uint8_t *p_key_packet_siz
 		uint8_t *p_tmp;
     bool is_new_packet;
 	
-	p_tmp = currently_pressed_keys;		//Save the currently pressed keys to transmitted keys by swapping two pointers
-	currently_pressed_keys = transmitted_keys;
-	transmitted_keys = p_tmp;
-	transmitted_keys_num = currently_pressed_keys_num;	//Save the number of currently pressed keys
+		p_tmp = currently_pressed_keys;		//Save the currently pressed keys to transmitted keys by swapping two pointers
+		currently_pressed_keys = transmitted_keys;
+		transmitted_keys = p_tmp;
+		transmitted_keys_num = currently_pressed_keys_num;	//Save the number of currently pressed keys
 
     if (keymatrix_read(currently_pressed_keys, &currently_pressed_keys_num)){	//Scan the key matrix, save the result in currently_pressed_keys
-		if (have_keys_changed()){	//Some keys have been pressed, check if there is key changes
-			keypacket_create(&key_packet[0], KEY_PACKET_SIZE);
-			*p_key_packet       = &key_packet[0];
-			*p_key_packet_size  = KEY_PACKET_SIZE;
-			is_new_packet = true;
-		}else{
-            is_new_packet = false;	//No need to create a new packet if there is no changes
-        }
+			if (have_keys_changed()){	//Some keys have been pressed, check if there is key changes
+				keypacket_create(&key_packet[0], KEY_PACKET_SIZE);
+				*p_key_packet       = &key_packet[0];
+				*p_key_packet_size  = KEY_PACKET_SIZE;
+				is_new_packet = true;
+			}else{
+							is_new_packet = false;	//No need to create a new packet if there is no changes
+      }
     }
     else{
         is_new_packet = false;		//No key is pressed or ghosting detected. Don't create a packet.
@@ -137,55 +140,63 @@ static bool keymatrix_read(uint8_t *pressed_keys, uint8_t *number_of_pressed_key
     *number_of_pressed_keys = 0;
 	// check modifiers first
 #ifdef IIC_MODIFIERS
+	// set mod_base_pin to low and sense low on the modifier pins
+	nrf_gpio_pin_clear((uint32_t) mod_base_pin);
 	for (uint_fast8_t mod = KEYBOARD_NUM_OF_MODS; mod--; )	{
-		//nrf_gpio_pin_set((uint32_t) mod_base_pin);
-		nrf_gpio_pin_set((uint32_t) mods_pin_array[mod]);
-//needed?        if (((NRF_GPIO->IN)&input_scan_vector) != 0){					//If any input is high
-		  uint_fast8_t pin_state;
-		  //pin_state = nrf_gpio_pin_read((uint32_t) mods_pin_array[mod]);
-		  pin_state = nrf_gpio_pin_read((uint32_t) mod_base_pin);
-		  if (pin_state){											//If pin is high
-			  if (*number_of_pressed_keys < MAX_NUM_OF_PRESSED_KEYS){
-				  *pressed_keys = default_modifier_lookup[mod];
-				  if(*pressed_keys != 0){							//Record the pressed key if it's not 0
-					  pressed_keys++;
-					  (*number_of_pressed_keys)++;
-				  }
-			  }
-		  }
-
-//needed?		}  
-		nrf_gpio_pin_clear((uint32_t) mods_pin_array[mod]);
+// integrate input_scan_vector stuff?
+//	if( mod <= mod_to_vcc )	{
+//		nrf_gpio_cfg_sense_input(mods_pin_array[mod], NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+//	} else {
+//		nrf_gpio_cfg_sense_input(mods_pin_array[mod], NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+//	}
+		
+	  uint_fast8_t pin_state;
+		//pin_state	= nrf_gpio_pin_sense_get(mods_pin_array[mod]);
+	  pin_state	= nrf_gpio_pin_read(mods_pin_array[mod]);
+	  //if( pin_state == 0 ) {	//If pin is accordingly set
+	  if( pin_state == ( (mod<=mod_to_vcc)? 0 : 1  ) ) {	//If pin is accordingly set
+	      if (*number_of_pressed_keys < MAX_NUM_OF_PRESSED_KEYS) {
+	    	  *pressed_keys = default_modifier_lookup[mod];
+	    	  if(*pressed_keys != 0) {			//Record the pressed key if it's not 0
+	    		  pressed_keys++;
+	    		  (*number_of_pressed_keys)++;
+	    	  }
+	      }
+	  }
+		//nrf_gpio_pin_clear((uint32_t) mods_pin_array[mod]);
 	}
+// 	if( *number_of_pressed_keys )	{
+// 		return true;
+// 	}
 #endif
-    for (uint_fast8_t column =  KEYBOARD_NUM_OF_COLUMNS; column--;){	//Loop through each column
-		nrf_gpio_pin_set((uint32_t) column_pin_array[column]);
-        if (((NRF_GPIO->IN)&input_scan_vector) != 0){					//If any input is high
-			uint_fast8_t pin_state;
-			row_state[column] = 0;
-            uint_fast8_t detected_keypresses_on_column = 0;
-            for (uint_fast8_t row = KEYBOARD_NUM_OF_ROWS; row--;){		//Loop through each row
-				pin_state = nrf_gpio_pin_read((uint32_t) row_pin_array[row]);
-				row_state[column] |= (pin_state << row);				//Record pin state
-                if (pin_state){											//If pin is high
-                    if (*number_of_pressed_keys < MAX_NUM_OF_PRESSED_KEYS){
-                        *pressed_keys = matrix_lookup[row * KEYBOARD_NUM_OF_COLUMNS + column];
-                        if(*pressed_keys != 0){							//Record the pressed key if it's not 0
-							pressed_keys++;
-							(*number_of_pressed_keys)++;
+    for (uint_fast8_t column =  KEYBOARD_NUM_OF_COLUMNS; column--;) {	//Loop through each column
+			nrf_gpio_pin_set((uint32_t) column_pin_array[column]);
+      if (((NRF_GPIO->IN)&input_scan_vector) != 0)  {			//If any input is high
+				uint_fast8_t pin_state;
+				row_state[column] = 0;
+				uint_fast8_t detected_keypresses_on_column = 0;
+				for (uint_fast8_t row = KEYBOARD_NUM_OF_ROWS; row--;) {		//Loop through each row
+						pin_state = nrf_gpio_pin_read((uint32_t) row_pin_array[row]);
+						row_state[column] |= (pin_state << row);				//Record pin state
+						if (pin_state) {											//If pin is high
+							if (*number_of_pressed_keys < MAX_NUM_OF_PRESSED_KEYS) {
+								*pressed_keys = matrix_lookup[row * KEYBOARD_NUM_OF_COLUMNS + column];
+								if(*pressed_keys != 0) {							//Record the pressed key if it's not 0
+									pressed_keys++;
+									(*number_of_pressed_keys)++;
+								}
+							}
+							detected_keypresses_on_column++;
 						}
-                    }
-                    detected_keypresses_on_column++;
-                }
-            }
-            if (detected_keypresses_on_column > 1){
-                if (blocking_mask & row_state[column]){					//If there is ghosting
-                    return false;
-                }
-            }
-            blocking_mask |= row_state[column];
-        }
-		nrf_gpio_pin_clear((uint32_t) column_pin_array[column]);
+				}
+				if (detected_keypresses_on_column > 1) {
+					if (blocking_mask & row_state[column]) {					//If there is ghosting
+						return false;
+					}
+				}
+				blocking_mask |= row_state[column];
+			}
+			nrf_gpio_pin_clear((uint32_t) column_pin_array[column]);
     }
     return true;
 }
@@ -204,8 +215,11 @@ static void keypacket_create(uint8_t *key_packet, uint8_t key_packet_size)
         if (currently_pressed_keys[i] == 0xFF) {					//If Fn is pressed,
             fn_key_is_set = true;
         }else if (currently_pressed_keys[i] >= MODIFIER_HID_START && currently_pressed_keys[i] <= MODIFIER_HID_END) {
-			//Detect and set modifier key, see HID Usage Tables for more detail
-            key_packet[KEY_PACKET_MODIFIER_KEY_INDEX] |= (uint8_t)(1U << (currently_pressed_keys[i] - MODIFIER_HID_START));
+						//Detect and set modifier key, see HID Usage Tables for more detail
+            // orig 
+						key_packet[KEY_PACKET_MODIFIER_KEY_INDEX] |= (uint8_t)(1U << (currently_pressed_keys[i] - MODIFIER_HID_START));
+						//tryin to put the entire modifier into the packet
+            //key_packet[KEY_PACKET_MODIFIER_KEY_INDEX] |= (uint8_t)(1U << (currently_pressed_keys[i]));
         }
         else if (currently_pressed_keys[i] != 0){
             keypacket_addkey(currently_pressed_keys[i]);			//Add keys to the packsge 
@@ -245,27 +259,27 @@ static bool have_keys_changed(void){
 
 static void remap_fn_keys(uint8_t *keys, uint8_t number_of_keys){
     for (uint_fast8_t i = KEY_PACKET_KEY_INDEX; i < number_of_keys; i++){
-        switch (keys[i]){
-            case 0x3A:
-                keys[i] = 0x7F; break;	//F1 -> Mute
-            case 0x3B:	
-								keys[i] = 0x81; break;	//F2 -> VolumnDown
-            case 0x3C:          
-                keys[i] = 0x80; break;	//F3 -> VolumnUp
-            case 0x3D:         
-                keys[i] = 0x48; break; 	//F4 -> Pause
-            case 0x52:         
-                keys[i] = 0x4B; break;	//Up -> PageUp
-            case 0x51:          
-                keys[i] = 0x4E; break;	//Down -> PageDown
-            case 0x50:         
-                keys[i] = 0x4A; break; 	//Left -> Home
-            case 0x4F:        
-                keys[i] = 0x4D; break;	//Right -> End
-						case 0x2C:        
-                keys[i] = 0xFA; break;	//Space -> Sleep mode
-            default: break;
-        }
+      switch (keys[i]){
+        case 0x3A:
+            keys[i] = 0x7F; break;	//F1 -> Mute
+        case 0x3B:	
+						keys[i] = 0x81; break;	//F2 -> VolumnDown
+        case 0x3C:          
+            keys[i] = 0x80; break;	//F3 -> VolumnUp
+        case 0x3D:         
+            keys[i] = 0x48; break; 	//F4 -> Pause
+        case 0x52:         
+            keys[i] = 0x4B; break;	//Up -> PageUp
+        case 0x51:          
+            keys[i] = 0x4E; break;	//Down -> PageDown
+        case 0x50:         
+            keys[i] = 0x4A; break; 	//Left -> Home
+        case 0x4F:        
+            keys[i] = 0x4D; break;	//Right -> End
+				case 0x2C:        
+            keys[i] = 0xFA; break;	//Space -> Sleep mode
+        default: break;
+      }
     }
 }
-/* vim: set ts=4 sw=2 tw=0 noet :*/
+/* vim: set ts=2 sw=2 tw=0 noet :*/

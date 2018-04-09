@@ -8,13 +8,14 @@
 // This part was adpated to Apple //c Keyboard, which has a 10x8 matrix
 #define KEYBOARD_NUM_OF_COLUMNS 10 // !< Number of columns in the keyboard matrix
 #define KEYBOARD_NUM_OF_ROWS    8  // !< Number of rows in the keyboard matrix
-#define KEYBOARD_NUM_OF_MODS    2  // !< Number of modifiers beside the keyboard matrix
+#define KEYBOARD_NUM_OF_MODS    7  // !< Number of modifiers beside the keyboard matrix
 // I try to get shift and Ctrl working for now
 
-static const uint8_t row_pin_array[KEYBOARD_NUM_OF_ROWS] 	= { 10, 11, 12, 13, 14, 15, 16, 17 };
-static const uint8_t column_pin_array[KEYBOARD_NUM_OF_COLUMNS] 	= { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-static const uint8_t mods_pin_array[KEYBOARD_NUM_OF_MODS] 	= { 21, 22 };
+static const uint8_t row_pin_array[KEYBOARD_NUM_OF_ROWS] 	= { 10, 11, 12, 13, 14, 15, 16, 17 	};
+static const uint8_t column_pin_array[KEYBOARD_NUM_OF_COLUMNS] 	= { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 	};
+static const uint8_t mods_pin_array[KEYBOARD_NUM_OF_MODS] 	= { 21, 22, 23, 24, 25, 28, 29 		};
 static const uint8_t mod_base_pin				= 18;
+static const uint8_t mod_to_vcc					= 2;// mods behind this one are set to high if pressed
 
 static const uint8_t wakeup_button_row_index = 0;			//select row_pin_array[2] = 21
 static const uint8_t wakeup_button_column_index = 0;	//select column_pin_array[1] = 2 
@@ -32,13 +33,15 @@ static const uint8_t default_matrix_lookup[KEYBOARD_NUM_OF_COLUMNS * KEYBOARD_NU
 /*5*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_GRAVE,	KC_P,		KC_LBRACKET,	KC_RBRACKET,
 /*6*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_ENTER,	KC_UP,		KC_SPACE,	KC_QUOT,
 /*7*/		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_NO,		KC_BSPACE,	KC_DOWN,	KC_LEFT,	KC_RIGHT
+//KC_BSPACE,	KC_DOWN,	KC_LEFT,	KC_RIGHT
 };
 
 /** Table containing the mapping between the modifiers and their HID codes */
 static const uint8_t default_modifier_lookup[KEYBOARD_NUM_OF_COLUMNS * KEYBOARD_NUM_OF_ROWS] =
 {
-/*	X0	X1	*/
-/*0*/		KC_LSFT,	KC_LCTRL
+/*	X0		X1		2		3		4	 5	6	   */
+/*0*/	KC_LSFT,	KC_LCTRL, 	KC_CAPS,	KC_LALT,	KC_RALT, KC_1,	KC_2	/*0*/
+/*	Shift		Control		Caps		OpenApple	Closed A 80/40	keyboard
 };
 
 /* Apple //c keyboard matrix  */
